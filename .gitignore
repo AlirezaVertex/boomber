@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+phones.txt
+check_code.txt
+
 # C extensions
 *.so
 
