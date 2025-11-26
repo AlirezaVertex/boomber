@@ -1,5 +1,4 @@
-from urllib.parse import urlparse
-from urllib.parse import urljoin
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import requests
 import random
@@ -12,6 +11,7 @@ from utils import print_error, print_success
 
 class Base:
     def __init__(self, phone):
+        # Initialize with phone number, session, headers, and user agents
         self.phone = phone
 
         self.user_agents = [
@@ -38,15 +38,9 @@ class Base:
             "Cache-Control": "no-cache",
             "Connection": "keep-alive"
         }
-        
-        # self.session.headers.update({
-        #     "Origin": "https://www.vidomart.shop",
-        #     "Referer": "https://www.vidomart.shop/register"
-        # })
 
     def split_number_with_plus(self, number_str: str) -> str:
-        # فرض می‌کنیم شماره رو می‌خوای به سه بخش تقسیم کنی
-        # اینجا مثال: 3 رقم اول + 3 رقم بعدی + بقیه
+        # Split phone number into three parts with '+' separators
         number_str = number_str.replace("09", "9")
         part1 = number_str[0:3]
         part2 = number_str[3:6]
@@ -57,65 +51,64 @@ class Base:
         try:
             site = urlparse(url).netloc
 
-            # اگر هدر خاصی پاس داده نشده بود، هدرهای پیش‌فرض مرورگر رو بذار
+            # Use default headers if none provided
             if headers is None:
                 headers = self.headers
 
-            # ارسال درخواست با session (کوکی‌ها از مرحله GET ذخیره شده‌اند)
+            # Send POST request with session (cookies preserved)
             r = self.session.post(url, data=data, headers=headers)
 
             if r.ok:
-                print_success(f"{site} -> SMS request sent successfully")
+                print_success(f"SMS request successfully sent to {site}")
             else:
-                print_error(f"{site} -> something went wrong ({r.status_code})")
-                
+                print_error(f"Request to {site} failed with status code {r.status_code}")
+
             if save:
                 self.save(r.text)
-                                
+
         except Exception as e:
-            print_error(f"can not send data to {url} -> {e}")
+            print_error(f"Failed to send data to {url}: {e}")
 
     def save(self, data):
+        # Save response HTML to temp.html for debugging
         with open("temp.html", mode="w", encoding="utf-8") as file:
             file.write(data)
 
     def generate_strong_password(self, length=10):
+        # Generate a random strong password using UUID
         return uuid.uuid4().hex[0:length]
 
     def unique_username(self, prefix="user"):
-        # ترکیب prefix + زمان + عدد تصادفی
+        # Generate unique username using prefix + timestamp + random number
         return f"{prefix}_{int(time.time())}_{random.randint(1000,9999)}"
 
     def unique_email(self, domain="example.com"):
-        local_part = uuid.uuid4().hex[:10]  # رشته‌ی تصادفی 10 کاراکتری
+        # Generate unique email using random UUID string
+        local_part = uuid.uuid4().hex[:10]
         return f"{local_part}@{domain}"
 
     def set_input_to_data(self, inputs):
+        # Convert HTML input fields into a dictionary
         data = {}
         for inp in inputs:
             name = inp.get("name")
             value = inp.get("value", "")
             if name:
                 data[name] = value
-
         return data
 
     def get(self, url):
         try:
+            # Send GET request and parse HTML with BeautifulSoup
             response = self.session.get(url)
             response.raise_for_status()
-
             soup = BeautifulSoup(response.content, "html.parser")
-
         except Exception as e:
             parsed = urlparse(url)
-            print_error(f"Error {parsed.netloc} -> {e}")
+            print_error(f"Error fetching {parsed.netloc}: {e}")
             return None
-
         else:
             return soup
-
-
 class Register(Base):
     # def session(self):
     #     chosen_agent = random.choice(self.user_agents)
@@ -460,22 +453,27 @@ class Register(Base):
             print_error(f"Error startabad -> {e}")
 
     def start(self):
-        # self.digikala()
-        # self.rcs()
-        # self.hermeslearn()
-        # self.sabzlearn()
-        # self.digistyle()
-        # self.learnfiles()
-        # self.abzarwp()
-        # self.vidomart()
-        # self.cafeamuzesh()
-        # self.mohammadfarshadian()
-
-        # have changes
-        # self.numberland()
-
-        # every things are ok but sms will not send
-        # self.irankargah()
-        self.startabad()
-        
-        
+        methods = [
+            # self.digikala,
+            # self.rcs,
+            # self.hermeslearn,
+            # self.sabzlearn,
+            # self.digistyle,
+            # self.learnfiles,
+            # self.abzarwp,
+            # self.vidomart,
+            # self.cafeamuzesh,
+            # self.mohammadfarshadian,
+            
+            # change neaded
+            # self.numberland,
+            
+            # every things are ok by sms will not send
+            # self.irankargah,
+            self.startabad
+        ]
+        for method in methods:
+            try:
+                method()
+            except Exception as e:
+                print_error(f"{method.__name__} failed: {e}")
